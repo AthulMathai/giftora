@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireStaff } from "@/lib/auth";
+import { AI_MISSING, aiConfigured, generateJson } from "@/lib/ai";
 import { friendly, getProduct, list, listCategories, parseMoney, slugify } from "@/lib/catalog";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -128,13 +129,12 @@ export async function makePhotoFirst(formData: FormData) {
 export interface SeoDraft { name: string; description?: string; category?: string; occasions?: string[]; recipients?: string[]; tags?: string[] }
 
 /**
- * Drafts an SEO title and description with Claude. It only returns text for the form:
+ * Drafts an SEO title and description with AI (Gemini free tier or Claude). It only returns text for the form:
  * nothing is saved until a person reads it and clicks Save (AI content needs human approval).
  */
 export async function suggestSeo(input: string | SeoDraft): Promise<{ seo_title?: string; seo_description?: string; error?: string }> {
   const staff = await requireStaff("catalog.edit");
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) return { error: "Add ANTHROPIC_API_KEY in Vercel (staff project) to turn on AI suggestions." };
+  if (!aiConfigured()) return { error: AI_MISSING };
 
   let draft: SeoDraft;
   if (typeof input === "string") {
@@ -171,42 +171,14 @@ export async function suggestSeo(input: string | SeoDraft): Promise<{ seo_title?
     JSON.stringify(facts, null, 2),
   ].join("\n");
 
-  let text = "";
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({
-        model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-5",
-        max_tokens: 400,
-        messages: [{ role: "user", content: prompt }],
-      }),
-      cache: "no-store",
-      signal: AbortSignal.timeout(30_000),
-    });
-    const body = (await res.json().catch(() => null)) as { content?: { type: string; text?: string }[]; error?: { message?: string } } | null;
-    if (!res.ok) {
-      console.error("[staff] AI SEO suggestion failed", res.status, body?.error?.message);
-      return { error: res.status === 401 ? "The AI key isn't valid. Check ANTHROPIC_API_KEY in Vercel." : "The AI service didn't answer. Try again in a minute." };
-    }
-    text = (body?.content ?? []).filter((c) => c.type === "text").map((c) => c.text ?? "").join("");
-  } catch (e) {
-    console.error("[staff] AI SEO suggestion failed", e);
-    return { error: "The AI service didn't answer. Try again in a minute." };
-  }
-
-  const json = text.match(/\{[\s\S]*\}/)?.[0];
-  try {
-    const out = JSON.parse(json ?? "") as { seo_title?: unknown; seo_description?: unknown };
-    const tidy = (s: unknown, n: number) => {
-      const t = String(s ?? "").replace(/\s+/g, " ").trim();
-      return t.length <= n ? t : t.slice(0, n - 1).replace(/\s+\S*$/, "") + "…";
-    };
-    const seo_title = tidy(out.seo_title, 60);
-    const seo_description = tidy(out.seo_description, 155);
-    if (!seo_title && !seo_description) throw new Error("empty");
-    return { seo_title, seo_description };
-  } catch {
-    return { error: "The AI reply couldn't be read. Try again." };
-  }
+  const out = await generateJson<{ seo_title?: unknown; seo_description?: unknown }>(prompt, 400);
+  if (!out.ok) return { error: out.error };
+  const tidy = (s: unknown, n: number) => {
+    const t = String(s ?? "").replace(/\s+/g, " ").trim();
+    return t.length <= n ? t : t.slice(0, n - 1).replace(/\s+\S*$/, "") + "…";
+  };
+  const seo_title = tidy(out.data.seo_title, 60);
+  const seo_description = tidy(out.data.seo_description, 155);
+  if (!seo_title && !seo_description) return { error: "The AI reply couldn't be read. Try again." };
+  return { seo_title, seo_description };
 }
