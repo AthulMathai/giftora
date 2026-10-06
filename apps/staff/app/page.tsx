@@ -35,6 +35,11 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const staff = state.staff;
   const orders = staff.can("orders.view") ? await staffOrders(staff.userId) : [];
   const count = (s: string[]) => orders.filter((o) => s.includes(o.status)).length;
+  let exceptions = 0;
+  if (staff.can("fulfillment.operate")) {
+    const { data } = await createAdminClient().rpc("svc_exceptions", { p_actor: staff.userId, p_status: "open" });
+    exceptions = ((data ?? []) as unknown[]).length;
+  }
   let staleCount = 0;
   if (staff.can("suppliers.view")) {
     const { data } = await createAdminClient().rpc("svc_stock_list", { p_actor: staff.userId });
@@ -42,9 +47,9 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   }
   const tiles = [
     { label: "New — to acquire", value: count(["paid"]), href: "/orders?status=paid" },
-    { label: "Being prepared", value: count(["processing"]), href: "/orders?status=processing" },
+    { label: "Being prepared", value: count(["processing", "ready_to_ship", "packed"]), href: "/orders?status=processing" },
     { label: "Shipped", value: count(["shipped"]), href: "/orders?status=shipped" },
-    { label: "Delivered", value: count(["delivered"]), href: "/orders?status=delivered" },
+    { label: "Open exceptions", value: exceptions, href: "/exceptions" },
   ];
 
   return (
@@ -70,8 +75,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         ))}
       </div>
       {staff.can("fulfillment.operate") && (
-        <Link href="/pick-list" className="mt-8 inline-flex h-11 items-center rounded-lg bg-ink px-5 text-sm text-white">
-          Open today&apos;s pick list
+        <Link href="/fulfillment" className="mt-8 inline-flex h-11 items-center rounded-lg bg-ink px-5 text-sm text-white">
+          Go to Fulfillment
         </Link>
       )}
     </div>
