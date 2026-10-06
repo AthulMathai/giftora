@@ -2,13 +2,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SetupNotice } from "@/components/setup-notice";
+import { Alert, SubmitButton } from "@/components/ui";
+import { addToCart } from "@/app/cart/actions";
+import { getUser } from "@/lib/auth";
 import { getAvailability, getProduct, prices } from "@/lib/catalog";
 import { formatCad, priceRange } from "@/lib/format";
 import { supabaseConfigured } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-type Props = { params: Promise<{ slug: string }> };
+type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ error?: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!supabaseConfigured()) return {};
@@ -23,7 +26,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function ProductPage({ params }: Props) {
+export default async function ProductPage({ params, searchParams }: Props) {
+  const { error } = await searchParams;
   if (!supabaseConfigured()) return <SetupNotice />;
   const product = await getProduct((await params).slug);
   if (!product) notFound();
@@ -32,6 +36,8 @@ export default async function ProductPage({ params }: Props) {
   const availability = await getAvailability(variants.map((v) => v.id));
   const purchasable = product.status === "active" || product.status === "seasonal";
   const anyInStock = variants.some((v) => (availability.get(v.id) ?? 0) > 0);
+  const firstAvailable = variants.find((v) => (availability.get(v.id) ?? 0) > 0);
+  const user = await getUser();
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
   // Product structured data for search engines and AI answer engines.
@@ -74,32 +80,47 @@ export default async function ProductPage({ params }: Props) {
           <p className="mt-3 text-xl">{priceRange(prices(product))}</p>
           {product.description && <p className="mt-6 text-muted leading-relaxed">{product.description}</p>}
 
-          {variants.length > 1 && (
-            <fieldset className="mt-8">
-              <legend className="text-sm font-medium">{product.option_names.join(" / ") || "Option"}</legend>
-              <ul className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {variants.map((v) => {
-                  const qty = availability.get(v.id) ?? 0;
-                  return (
-                    <li key={v.id} className={`rounded-xl border px-3 py-2 text-sm ${qty > 0 ? "border-line bg-paper" : "border-line/60 text-muted line-through"}`}>
-                      <span className="block">{v.label}</span>
-                      <span className="text-xs text-muted">{formatCad(v.price_cents ?? 0)}{qty > 0 && qty <= 3 ? ` · only ${qty} left` : ""}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </fieldset>
+          {error === "unavailable" && <div className="mt-6"><Alert>That option just sold out. Please pick another.</Alert></div>}
+
+          {purchasable && anyInStock ? (
+            <form action={addToCart} className="mt-8">
+              <input type="hidden" name="back" value={`/products/${product.slug}`} />
+              {variants.length > 1 ? (
+                <fieldset>
+                  <legend className="text-sm font-medium">{product.option_names.join(" / ") || "Option"}</legend>
+                  <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {variants.map((v) => {
+                      const qty = availability.get(v.id) ?? 0;
+                      return (
+                        <label key={v.id}
+                          className={`relative cursor-pointer rounded-xl border px-3 py-2 text-sm has-[:checked]:border-ink has-[:checked]:bg-ink has-[:checked]:text-cream ${qty > 0 ? "border-line bg-paper" : "cursor-not-allowed border-line/60 text-muted line-through"}`}>
+                          <input type="radio" name="variant_id" value={v.id} required disabled={qty === 0}
+                                 defaultChecked={v.id === firstAvailable?.id} className="sr-only" />
+                          <span className="block">{v.label}</span>
+                          <span className="text-xs opacity-75">{formatCad(v.price_cents ?? 0)}{qty > 0 && qty <= 3 ? ` · only ${qty} left` : ""}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+              ) : (
+                <input type="hidden" name="variant_id" value={firstAvailable?.id} />
+              )}
+              <div className="mt-6 flex items-center gap-3">
+                <label className="sr-only" htmlFor="quantity">Quantity</label>
+                <select id="quantity" name="quantity" defaultValue="1"
+                        className="h-12 rounded-full border border-line bg-paper px-4">
+                  {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+                <SubmitButton className="flex-1 sm:flex-none">{user ? "Add to cart" : "Sign in to add to cart"}</SubmitButton>
+              </div>
+            </form>
+          ) : (
+            <p className="mt-8 text-muted">Currently unavailable</p>
           )}
 
-          <div className="mt-8">
-            {purchasable && anyInStock ? (
-              <span className="inline-flex h-12 items-center rounded-full bg-ink px-8 text-cream">
-                Sign in to add to cart
-              </span>
-            ) : (
-              <p className="text-muted">Currently unavailable</p>
-            )}
-            <p className="mt-3 text-sm text-muted">Ships across Canada in 3–7 business days. Free standard shipping over $75.</p>
+          <div>
+            <p className="mt-4 text-sm text-muted">Ships across Canada in 3–7 business days. Free standard shipping over $75.</p>
           </div>
         </div>
       </div>

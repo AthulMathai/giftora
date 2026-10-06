@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { getStaff } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { getStaffState } from "@/lib/auth";
+import { staffOrders } from "@/lib/orders";
 import { supabaseConfigured } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -11,15 +13,16 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       <div className="max-w-xl rounded-xl border border-line bg-panel p-6 text-sm">
         <h1 className="text-lg font-semibold">Not connected yet</h1>
         <p className="mt-2 text-muted">
-          Add the Supabase URL, publishable key and service-role key to <code>apps/staff/.env.local</code>.
+          Add the Supabase URL, publishable key and service-role key to the staff app&apos;s environment.
           The <Link className="underline" href="/tools/pricing">pricing calculator</Link> works without it.
         </p>
       </div>
     );
   }
 
-  const staff = await getStaff();
-  if (!staff) {
+  const state = await getStaffState();
+  if (state.kind === "needs_mfa") redirect("/mfa");
+  if (state.kind !== "ok") {
     return (
       <div className="max-w-md rounded-xl border border-line bg-panel p-6">
         <h1 className="text-lg font-semibold">Staff sign-in required</h1>
@@ -28,6 +31,15 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       </div>
     );
   }
+  const staff = state.staff;
+  const orders = staff.can("orders.view") ? await staffOrders(staff.userId) : [];
+  const count = (s: string[]) => orders.filter((o) => s.includes(o.status)).length;
+  const tiles = [
+    { label: "New — to acquire", value: count(["paid"]), href: "/orders?status=paid" },
+    { label: "Being prepared", value: count(["processing"]), href: "/orders?status=processing" },
+    { label: "Shipped", value: count(["shipped"]), href: "/orders?status=shipped" },
+    { label: "Delivered", value: count(["delivered"]), href: "/orders?status=delivered" },
+  ];
 
   return (
     <div>
@@ -39,13 +51,18 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       <h1 className="text-2xl font-semibold">Dashboard</h1>
       <p className="mt-1 text-sm text-muted">Signed in as {staff.email} · {staff.role.replace(/_/g, " ")}</p>
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {["Orders to acquire", "Being sorted", "Ready to ship", "Exceptions"].map((label) => (
-          <div key={label} className="rounded-xl border border-line bg-panel p-5">
-            <p className="text-sm text-muted">{label}</p>
-            <p className="mt-2 text-3xl font-semibold">—</p>
-          </div>
+        {tiles.map((t) => (
+          <Link key={t.label} href={t.href} className="rounded-xl border border-line bg-panel p-5 hover:border-ink">
+            <p className="text-sm text-muted">{t.label}</p>
+            <p className="mt-2 text-3xl font-semibold">{t.value}</p>
+          </Link>
         ))}
       </div>
+      {staff.can("fulfillment.operate") && (
+        <Link href="/pick-list" className="mt-8 inline-flex h-11 items-center rounded-lg bg-ink px-5 text-sm text-white">
+          Open today&apos;s pick list
+        </Link>
+      )}
     </div>
   );
 }
