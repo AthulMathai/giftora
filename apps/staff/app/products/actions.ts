@@ -72,6 +72,10 @@ export async function saveVariant(formData: FormData) {
       supplier_sku: formData.get("supplier_sku"),
       supplier_barcode: formData.get("supplier_barcode"),
       aisle_location: formData.get("aisle_location"),
+      inner_qty: String(formData.get("inner_qty") ?? "").trim() || null,
+      inner_barcode: formData.get("inner_barcode"),
+      outer_qty: String(formData.get("outer_qty") ?? "").trim() || null,
+      outer_barcode: formData.get("outer_barcode"),
     });
   }
   const { error } = await createAdminClient().rpc("svc_variant_save", { p_actor: staff.userId, p });

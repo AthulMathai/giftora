@@ -5,7 +5,7 @@ import { Button, Input, Notice, Panel } from "@/components/form";
 import { PrintButton } from "@/components/print-button";
 import { Scanner } from "@/components/scanner";
 import { requireStaff } from "@/lib/auth";
-import { getSession, SESSION_STEPS } from "@/lib/fulfillment";
+import { describePacks, getPickPacks, getSession, SESSION_STEPS, type PackBreakdown } from "@/lib/fulfillment";
 import { dateTime } from "@/lib/orders";
 import { closeSession, overridePack, packScan, removeFromSession, sortScan, updatePick } from "../actions";
 
@@ -28,6 +28,7 @@ export default async function SessionPage({ params, searchParams }: {
   const { tab = "pick", order: orderParam, error } = await searchParams;
   const s = await getSession(staff.userId, id);
   if (!s) notFound();
+  const packs: Record<string, PackBreakdown> = tab === "pick" ? await getPickPacks(staff.userId, s.id) : {};
 
   const active = s.orders.filter((o) => !o.removed);
   const units = s.pick_lines.reduce((t, l) => t + l.required, 0);
@@ -85,7 +86,7 @@ export default async function SessionPage({ params, searchParams }: {
             <thead className="text-left text-xs text-muted">
               <tr>
                 <th className="p-2 font-normal">✓</th><th className="p-2 font-normal">Aisle</th><th className="p-2 font-normal">SKU</th>
-                <th className="p-2 font-normal">Item</th><th className="p-2 text-right font-normal">Need</th>
+                <th className="p-2 font-normal">Item</th><th className="p-2 text-right font-normal">Need</th><th className="p-2 font-normal">Pick as</th>
                 <th className="p-2 font-normal print:hidden">Got / Short / Damaged</th><th className="hidden p-2 font-normal print:table-cell">Notes</th>
               </tr>
             </thead>
@@ -99,6 +100,15 @@ export default async function SessionPage({ params, searchParams }: {
                     <td className="p-2 font-mono font-semibold">{l.sku}{l.barcode && <span className="block text-[10px] font-normal text-muted">{l.barcode}</span>}</td>
                     <td className="p-2">{l.product}<span className="block text-xs text-muted">{l.variant}</span></td>
                     <td className="p-2 text-right text-xl font-bold">{l.required}</td>
+                    <td className="p-2">
+                      <span className="font-semibold">{describePacks(packs[l.id], l.required)}</span>
+                      {(packs[l.id]?.inner_barcode || packs[l.id]?.outer_barcode) && (
+                        <span className="block text-[10px] text-muted">
+                          {packs[l.id]?.inner_barcode && <>inner {packs[l.id]?.inner_barcode} </>}
+                          {packs[l.id]?.outer_barcode && <>outer {packs[l.id]?.outer_barcode}</>}
+                        </span>
+                      )}
+                    </td>
                     <td className="p-2 print:hidden">
                       <form action={updatePick} className="flex flex-wrap items-center gap-1">
                         <input type="hidden" name="session_id" value={s.id} />

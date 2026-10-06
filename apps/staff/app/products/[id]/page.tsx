@@ -5,7 +5,7 @@ import { PhotoUploader } from "@/components/photo-uploader";
 import { ProductForm } from "@/components/product-form";
 import { VariantForm } from "@/components/variant-form";
 import { requireStaff } from "@/lib/auth";
-import { getProduct, listCategories } from "@/lib/catalog";
+import { getProduct, getVariantPacks, listCategories } from "@/lib/catalog";
 import { deletePhoto, makePhotoFirst } from "../actions";
 
 export const metadata = { title: "Edit product" };
@@ -20,6 +20,10 @@ export default async function EditProductPage({ params, searchParams }: {
   const { error, saved } = await searchParams;
   const [product, categories] = await Promise.all([getProduct(staff.userId, id), listCategories(staff.userId)]);
   if (!product) notFound();
+  if (staff.can("suppliers.view")) {
+    const packs = await getVariantPacks(staff.userId, product.id);
+    for (const v of product.variants) Object.assign(v, packs[v.id] ?? {});
+  }
 
   const canEdit = staff.can("catalog.edit");
   const canSupply = staff.can("suppliers.edit");
