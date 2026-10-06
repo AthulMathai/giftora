@@ -137,6 +137,21 @@ async function handle(topic: string, payload: Record<string, unknown>) {
     return;
   }
 
+  if (topic === "order.refunded") {
+    const a = await alert(false);
+    const amount = Number(payload.amount_cents ?? 0);
+    const cancelled = payload.cancelled === true;
+    const link = `${site()}/account/orders/${encodeURIComponent(a.order_number)}`;
+    await sendEmail(a.email, cancelled ? `Your Giftora order ${a.order_number} was cancelled` : `A refund for your Giftora order ${a.order_number}`,
+      `<div style="font-family:system-ui,sans-serif;max-width:520px"><h2>${cancelled ? "We're sorry — your order was cancelled" : "We've issued a refund"}</h2>
+        <p>We've refunded <strong>${cad(amount)}</strong> to your original payment method for order <strong>${esc(a.order_number)}</strong>.
+        It usually appears within 5–10 business days.</p>
+        ${cancelled ? "<p>We couldn't get one or more of your items from our supplier. Nothing more will be charged.</p>" : ""}
+        <p><a href="${link}">View your order</a></p></div>`,
+      `Refund of ${cad(amount)} issued for order ${a.order_number}. ${link}`);
+    return;
+  }
+
   if (topic === "order.paid_after_expiry") return; // covered by the [CHECK STOCK] flag on order.paid
 
   console.warn(`[notify] no handler for topic ${topic}`);

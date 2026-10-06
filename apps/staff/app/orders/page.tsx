@@ -1,27 +1,30 @@
 import Link from "next/link";
 import { requireStaff } from "@/lib/auth";
 import { cad, dateTime, staffOrders } from "@/lib/orders";
-import { updateStatus } from "./actions";
+import { refundOrder, updateStatus } from "./actions";
 
 export const metadata = { title: "Orders" };
 export const dynamic = "force-dynamic";
 
 const FILTERS = [
-  { key: "open", label: "Open", statuses: ["paid", "processing"] },
+  { key: "open", label: "Open", statuses: ["paid", "processing", "ready_to_ship", "packed"] },
   { key: "paid", label: "New", statuses: ["paid"] },
-  { key: "processing", label: "Being prepared", statuses: ["processing"] },
+  { key: "processing", label: "Being prepared", statuses: ["processing", "ready_to_ship", "packed"] },
   { key: "shipped", label: "Shipped", statuses: ["shipped"] },
   { key: "delivered", label: "Delivered", statuses: ["delivered"] },
+  { key: "cancelled", label: "Cancelled", statuses: ["cancelled"] },
 ] as const;
 
 const BADGE: Record<string, string> = {
-  paid: "bg-accent/10 text-accent", processing: "bg-warn/10 text-warn",
+  paid: "bg-accent/10 text-accent", processing: "bg-warn/10 text-warn", ready_to_ship: "bg-warn/10 text-warn",
+  packed: "bg-ok/10 text-ok", cancelled: "bg-line text-muted",
   shipped: "bg-ok/10 text-ok", delivered: "bg-ok/10 text-ok",
 };
 
-export default async function OrdersPage({ searchParams }: { searchParams: Promise<{ status?: string; error?: string }> }) {
+export default async function OrdersPage({ searchParams }: { searchParams: Promise<{ status?: string; error?: string; refunded?: string }> }) {
   const staff = await requireStaff("orders.view");
-  const { status = "open", error } = await searchParams;
+  const { status = "open", error, refunded } = await searchParams;
+  const canRefund = staff.can("refunds.create");
   const filter = FILTERS.find((f) => f.key === status) ?? FILTERS[0];
   const orders = await staffOrders(staff.userId, [...filter.statuses]);
   const canEdit = staff.can("orders.edit");
@@ -40,6 +43,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
           ))}
         </nav>
       </div>
+      {refunded && <p role="status" className="mt-4 rounded-lg border border-ok/40 bg-ok/5 px-4 py-3 text-sm text-ok">Refund issued for {refunded}. The customer will see it on their order.</p>}
       {error && <p role="alert" className="mt-4 rounded-lg border border-bad/40 bg-bad/5 px-4 py-3 text-sm text-bad">{error}</p>}
 
       {orders.length === 0 ? (
@@ -54,6 +58,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                   <div className="flex items-baseline gap-3">
                     <h2 className="text-lg font-semibold">{o.order_number}</h2>
                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${BADGE[o.status] ?? "bg-line"}`}>{o.status}</span>
+                    {o.payment_status !== "captured" && <span className="rounded-full bg-line px-2.5 py-0.5 text-xs">{o.payment_status.replace(/_/g, " ")}</span>}
                     {o.ship_by && o.status === "paid" && <span className="text-xs text-muted">ship by {o.ship_by}</span>}
                   </div>
                   <div className="text-sm">
@@ -88,7 +93,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                   </div>
                 </div>
 
-                {canEdit && (o.status === "paid" || o.status === "processing") && (
+                {canEdit && (o.status === "paid" || o.status === "processing" || o.status === "packed") && (
                   <div className="mt-5 flex flex-wrap items-end gap-3 border-t border-line pt-4">
                     {o.status === "paid" && (
                       <form action={updateStatus}>
@@ -121,6 +126,28 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                     <input type="hidden" name="back" value={back} />
                     <button className="h-9 rounded-lg border border-line px-3 text-sm hover:border-ink">Mark delivered</button>
                   </form>
+                )}
+                {canRefund && ["captured", "partially_refunded"].includes(o.payment_status) && (
+                  <details className="mt-4 border-t border-line pt-3">
+                    <summary className="cursor-pointer text-sm text-muted">Refund…</summary>
+                    <form action={refundOrder} className="mt-3 flex flex-wrap items-end gap-2">
+                      <input type="hidden" name="order_id" value={o.id} />
+                      <input type="hidden" name="back" value={back} />
+                      <input type="hidden" name="nonce" value={crypto.randomUUID()} />
+                      <label className="text-xs text-muted">Amount (CAD)
+                        <input name="amount" required inputMode="decimal" placeholder={(o.total_cents / 100).toFixed(2)}
+                               className="mt-1 block h-9 w-28 rounded-lg border border-line px-2 text-sm text-ink" />
+                      </label>
+                      <label className="flex-1 text-xs text-muted">Reason (the customer won&apos;t see this)
+                        <input name="reason" required placeholder="e.g. Large out of stock at supplier"
+                               className="mt-1 block h-9 w-full rounded-lg border border-line px-2 text-sm text-ink" />
+                      </label>
+                      {!["shipped", "delivered"].includes(o.status) && (
+                        <label className="flex items-center gap-2 pb-2 text-xs"><input type="checkbox" name="cancel" className="accent-ink" /> Also cancel the order</label>
+                      )}
+                      <button className="h-9 rounded-lg border border-bad/40 px-3 text-sm text-bad">Refund through Stripe</button>
+                    </form>
+                  </details>
                 )}
               </article>
             );
