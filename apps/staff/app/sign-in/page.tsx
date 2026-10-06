@@ -11,7 +11,7 @@ async function signIn(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   // Never say which part was wrong.
   if (error) redirect("/sign-in?error=1");
-  redirect("/");
+  redirect("/mfa");
 }
 
 export default async function SignInPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
@@ -20,7 +20,11 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
     <form action={signIn} className="mx-auto mt-10 max-w-sm rounded-xl border border-line bg-panel p-6">
       <h1 className="text-lg font-semibold">Staff sign-in</h1>
       {!supabaseConfigured() && <p className="mt-2 text-sm text-warn">Supabase isn&apos;t configured yet.</p>}
-      {error && <p role="alert" className="mt-3 text-sm text-bad">That email and password didn&apos;t match.</p>}
+      {error === "not_staff" ? (
+        <p role="alert" className="mt-3 text-sm text-bad">This account isn&apos;t a Giftora staff account.</p>
+      ) : error ? (
+        <p role="alert" className="mt-3 text-sm text-bad">That email and password didn&apos;t match.</p>
+      ) : null}
       <label className="mt-5 block text-sm">
         Email
         <input name="email" type="email" required autoComplete="username"

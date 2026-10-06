@@ -12,14 +12,16 @@ export const metadata: Metadata = {
 
 const NAV = [
   { href: "/", label: "Dashboard" },
-  { href: "/tools/pricing", label: "Pricing calculator" },
+  { href: "/orders", label: "Orders" },
+  { href: "/pick-list", label: "Pick list" },
+  { href: "/tools/pricing", label: "Pricing" },
 ];
 
 export default function StaffLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en-CA" className={instrument.variable}>
       <body className="min-h-dvh">
-        <header className="bg-ink text-white">
+        <header className="bg-ink text-white print:hidden">
           <div className="mx-auto max-w-7xl px-4 h-14 flex items-center gap-8">
             <Link href="/" className="font-semibold tracking-tight">Giftora <span className="text-white/60 font-normal">Staff</span></Link>
             <nav className="flex gap-5 text-sm">
@@ -27,7 +29,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
             </nav>
           </div>
         </header>
-        <main className="mx-auto max-w-7xl px-4 py-8">{children}</main>
+        <main className="mx-auto max-w-7xl px-4 py-8 print:p-0">{children}</main>
       </body>
     </html>
   );
