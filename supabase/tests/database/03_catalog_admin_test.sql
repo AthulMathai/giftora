@@ -141,4 +141,12 @@ select test.ok((select count(*) from jsonb_array_elements(public.svc_categories(
                 where c ->> 'slug' = 'for-pets') = 1, 'category created');
 reset role;
 
+-- Hardening
+set role anon;
+select test.throws('select * from public.start_checkout(gen_random_uuid(), ''standard'')', 'permission denied',
+  'signed-out visitors cannot call start_checkout');
+select test.throws('select * from public.my_staff_permissions()', 'permission denied',
+  'signed-out visitors cannot call my_staff_permissions');
+reset role;
+
 \echo 'All catalog admin tests passed.'
