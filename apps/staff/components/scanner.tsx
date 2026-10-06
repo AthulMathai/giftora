@@ -9,6 +9,15 @@ interface DetectedBarcode { rawValue: string }
 interface BarcodeDetectorLike { detect(source: CanvasImageSource): Promise<DetectedBarcode[]> }
 type BarcodeDetectorCtor = new (opts?: { formats?: string[] }) => BarcodeDetectorLike;
 
+/** Prints a bin's 4×6 label in a hidden frame the moment the bin is complete. */
+function printLabel(orderId: string) {
+  const frame = document.createElement("iframe");
+  Object.assign(frame.style, { position: "fixed", right: "0", bottom: "0", width: "0", height: "0", border: "0" });
+  frame.src = `/labels/${orderId}?print=1`;
+  document.body.appendChild(frame);
+  setTimeout(() => frame.remove(), 120_000);
+}
+
 function beep(ok: boolean) {
   try {
     const ctx = new AudioContext();
@@ -26,7 +35,7 @@ function beep(ok: boolean) {
 
 const TONE: Record<string, string> = {
   ok: "border-ok bg-ok/10",
-  wrong_variant: "border-bad bg-bad/10",
+  wrong_variant: "border-warn bg-warn/15",
   not_required: "border-warn bg-warn/15",
   not_in_order: "border-bad bg-bad/10",
   already_packed: "border-warn bg-warn/15",
@@ -59,12 +68,13 @@ export function Scanner({ mode, scan }: {
     try { res = await scan(value, key); } catch (e) { res = { result: "error", message: (e as Error).message }; }
     setLast(res);
     beep(res.result === "ok");
+    if (mode === "sort" && res.result === "ok" && res.order_complete && res.order_id) printLabel(res.order_id);
     setCode("");
     busyRef.current = false;
     setBusy(false);
     input.current?.focus();
     router.refresh();
-  }, [scan, router]);
+  }, [scan, router, mode]);
 
   // Keep the scan box focused so a hardware scanner always types into it.
   useEffect(() => {
@@ -148,7 +158,12 @@ export function Scanner({ mode, scan }: {
                   </p>
                 )}
                 <p className="mt-2 text-3xl font-bold">{last.sorted} of {last.required}</p>
-                {last.order_complete && <p className="mt-1 font-semibold text-ok">Order complete — ready to pack</p>}
+                {last.order_complete && (
+                  <p className="mt-1 font-semibold text-ok">
+                    Bin complete — label printing.{" "}
+                    {last.order_id && <a href={`/labels/${last.order_id}?print=1`} target="_blank" rel="noreferrer" className="underline">Reprint</a>}
+                  </p>
+                )}
               </div>
             </div>
           ) : last.result === "ok" ? (
@@ -162,8 +177,7 @@ export function Scanner({ mode, scan }: {
             </div>
           ) : (
             <div>
-              <p className="text-2xl font-bold">{last.result.replace(/_/g, " ").toUpperCase()}</p>
-              <p className="mt-1">{last.message}</p>
+              <p className="text-2xl font-bold">{last.message}</p>
               {last.product && <p className="mt-1 text-sm text-muted">Scanned: {last.product} — {last.variant} ({last.sku})</p>}
             </div>
           )}

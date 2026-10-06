@@ -103,8 +103,9 @@ select test.ok((select v ->> 'message' from r where k = 's3') like '%Small / Bla
 
 insert into r select 's4', public.svc_sort_scan('55555555-5555-4555-8555-555555555555', (select v from f where k = 'S'), 'WL-BRN', 'k4');
 select test.ok((select v ->> 'result' from r where k = 's4') = 'not_required', 'unneeded item is ITEM NOT REQUIRED');
-select test.ok(exists (select 1 from internal.fulfillment_exceptions where kind = 'unexpected_item' and sku = 'WL-BRN'),
-  'unneeded item opens an exception');
+select test.ok(not exists (select 1 from internal.fulfillment_exceptions where kind = 'unexpected_item' and sku = 'WL-BRN')
+               and exists (select 1 from internal.scan_events where code = 'WL-BRN' and result = 'not_required'),
+  'unneeded item is logged, without opening an exception ticket');
 insert into r select 's5', public.svc_sort_scan('55555555-5555-4555-8555-555555555555', (select v from f where k = 'S'), 'NOPE-123', 'k5');
 select test.ok((select v ->> 'result' from r where k = 's5') = 'unknown_code', 'unknown barcode is reported');
 
@@ -122,7 +123,7 @@ select test.ok((select v ->> 'result' from r where k = 's8') <> 'ok'
 -- Label lock, packing, shipping
 -- ===========================================================================
 select test.throws(format('select public.svc_update_order_status(%L, %L, ''shipped'', ''Canada Post'', ''123'')',
-  '33333333-3333-4333-8333-333333333333', (select v from f where k = 'A')), 'Label locked', 'shipping is locked before packing');
+  '33333333-3333-4333-8333-333333333333', (select v from f where k = 'B')), 'Label locked', 'shipping is locked until the bin is fully sorted');
 
 insert into r select 'p1', public.svc_pack_scan('55555555-5555-4555-8555-555555555555', (select v from f where k = 'A'), 'WL-BRN', 'p1');
 select test.ok((select v ->> 'result' from r where k = 'p1') = 'not_in_order', 'packing blocks an item not in the order');
@@ -181,11 +182,11 @@ select public.svc_session_close('55555555-5555-4555-8555-555555555555', (select 
 select test.ok((select status from internal.fulfillment_sessions where id = (select v from f where k = 'S')) = 'completed', 'session closes');
 
 -- Exceptions
-select test.ok(jsonb_array_length(public.svc_exceptions('55555555-5555-4555-8555-555555555555', 'open')) = 4,
-  'four open exceptions: short pick, wrong variant, unexpected item x2');
+select test.ok(jsonb_array_length(public.svc_exceptions('55555555-5555-4555-8555-555555555555', 'open')) = 1,
+  'only the real problem (short pick) is an open exception');
 select public.svc_exception_resolve('55555555-5555-4555-8555-555555555555',
   (select id from internal.fulfillment_exceptions where kind = 'short_pick' limit 1), 'Refunded order B');
-select test.ok(jsonb_array_length(public.svc_exceptions('55555555-5555-4555-8555-555555555555', 'open')) = 3, 'resolving removes it from the open list');
+select test.ok(jsonb_array_length(public.svc_exceptions('55555555-5555-4555-8555-555555555555', 'open')) = 0, 'resolving removes it from the open list');
 reset role;
 
 \echo 'All fulfillment tests passed.'

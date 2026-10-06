@@ -20,6 +20,28 @@ export async function createSession(formData: FormData) {
   redirect(`/fulfillment/${data}?tab=pick`);
 }
 
+export async function pickAll(formData: FormData) {
+  const staff = await requireStaff("fulfillment.operate");
+  const sessionId = String(formData.get("session_id"));
+  const { error } = await createAdminClient().rpc("svc_pick_all", { p_actor: staff.userId, p_session_id: sessionId });
+  if (error) redirect(withError(`/fulfillment/${sessionId}`, error.message));
+  revalidatePath(`/fulfillment/${sessionId}`);
+}
+
+export async function shipBatch(formData: FormData) {
+  const staff = await requireStaff("orders.edit");
+  const sessionId = String(formData.get("session_id"));
+  const { data, error } = await createAdminClient().rpc("svc_batch_ship", {
+    p_actor: staff.userId, p_session_id: sessionId, p_carrier: String(formData.get("carrier") ?? ""),
+  });
+  if (error) redirect(withError(`/fulfillment/${sessionId}`, error.message));
+  // Send the "shipped" emails now rather than waiting for the daily job.
+  const url = process.env.STOREFRONT_URL, secret = process.env.CRON_SECRET;
+  if (url && secret) await fetch(`${url}/api/jobs/outbox`, { headers: { Authorization: `Bearer ${secret}` }, cache: "no-store" }).catch(() => {});
+  revalidatePath("/fulfillment", "layout");
+  redirect(`/fulfillment/${sessionId}?shipped=${data}`);
+}
+
 export async function updatePick(formData: FormData) {
   const staff = await requireStaff("fulfillment.operate");
   const sessionId = String(formData.get("session_id"));
@@ -35,7 +57,7 @@ export async function updatePick(formData: FormData) {
 
 export interface ScanResult {
   result: "ok" | "wrong_variant" | "not_required" | "unknown_code" | "not_in_order" | "already_packed" | "not_ready" | "open_pack" | "error";
-  message?: string; pack_qty?: number; pack_kind?: string; bin?: string; order_number?: string; sku?: string; product?: string; variant?: string;
+  message?: string; pack_qty?: number; pack_kind?: string; order_id?: string; bin?: string; order_number?: string; sku?: string; product?: string; variant?: string;
   sorted?: number; packed?: number; required?: number; order_complete?: boolean;
 }
 
