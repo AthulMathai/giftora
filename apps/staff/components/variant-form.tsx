@@ -56,7 +56,12 @@ export function VariantForm({ productId, optionNames, variant: v, canEdit, canSu
             </Select>
             <Input label="Aisle / location" name="aisle_location" defaultValue={v?.aisle_location} />
             <Input label="Supplier SKU" name="supplier_sku" defaultValue={v?.supplier_sku} />
-            <Input label="Supplier barcode" name="supplier_barcode" defaultValue={v?.supplier_barcode} inputMode="numeric" />
+            <Input label="Supplier barcode (single item)" name="supplier_barcode" defaultValue={v?.supplier_barcode} inputMode="numeric" />
+            <Input label="Inner pack: units" name="inner_qty" defaultValue={v?.inner_qty ?? ""} inputMode="numeric" placeholder="e.g. 6" />
+            <Input label="Inner pack barcode" name="inner_barcode" defaultValue={v?.inner_barcode ?? ""} />
+            <Input label="Outer case: units" name="outer_qty" defaultValue={v?.outer_qty ?? ""} inputMode="numeric" placeholder="e.g. 12"
+                   hint="Total single units in the case, not inners." />
+            <Input label="Outer case barcode" name="outer_barcode" defaultValue={v?.outer_barcode ?? ""} />
           </>
         )}
         <label className="flex items-center gap-2 self-end pb-2 text-sm">

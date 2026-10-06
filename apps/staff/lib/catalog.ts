@@ -26,6 +26,7 @@ export interface VariantDetail {
   compare_at_cents?: number; weight_grams?: number; is_active: boolean; sort_order: number; available: number;
   supplier_sku?: string; supplier_barcode?: string; on_hand_qty?: number; supply_status?: string;
   aisle_location?: string; last_checked_at?: string; cost_cents?: number;
+  inner_qty?: number | null; inner_barcode?: string | null; outer_qty?: number | null; outer_barcode?: string | null;
   rule?: { rule_type: string; rate: number; min_margin: number; min_profit_cents: number; rounding: string; scope: string };
 }
 
@@ -47,6 +48,9 @@ async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
 
 export const listProducts = (actor: string) => rpc<ProductRow[]>("svc_catalog_products", { p_actor: actor });
 export const getProduct = (actor: string, id: string) => rpc<ProductDetail | null>("svc_product_get", { p_actor: actor, p_product_id: id });
+export const getVariantPacks = (actor: string, productId: string) =>
+  rpc<Record<string, { inner_qty: number | null; inner_barcode: string | null; outer_qty: number | null; outer_barcode: string | null }>>(
+    "svc_variant_packs", { p_actor: actor, p_product_id: productId });
 export const listCategories = (actor: string) => rpc<Category[]>("svc_categories", { p_actor: actor });
 
 /** "$12.50", "12.5", "1,299" -> cents. Empty -> null. Throws on nonsense. */
@@ -84,6 +88,9 @@ export function friendly(message: string): string {
   if (/categories_slug_key/.test(message)) return "That web address (slug) is already used by another category.";
   if (/slug_check|_slug_check/.test(message)) return "The web address may only use lowercase letters, numbers and dashes.";
   if (/sku_check/.test(message)) return "SKUs use capital letters, numbers and dashes (2–40 characters).";
+  if (/outer_bigger_than_inner/.test(message)) return "The outer case must hold more units than the inner pack.";
+  if (/inner_qty_check|outer_qty_check/.test(message)) return "Pack sizes must be 2 or more units.";
+  if (/variant_barcodes_code_key/.test(message)) return "That barcode is already used by another item.";
   if (/permission (\S+) required/.test(message)) return `Your role doesn't allow this (${message.match(/permission (\S+) required/)![1]}).`;
   return message;
 }

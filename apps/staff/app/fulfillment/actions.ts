@@ -34,8 +34,8 @@ export async function updatePick(formData: FormData) {
 }
 
 export interface ScanResult {
-  result: "ok" | "wrong_variant" | "not_required" | "unknown_code" | "not_in_order" | "already_packed" | "not_ready" | "error";
-  message?: string; bin?: string; order_number?: string; sku?: string; product?: string; variant?: string;
+  result: "ok" | "wrong_variant" | "not_required" | "unknown_code" | "not_in_order" | "already_packed" | "not_ready" | "open_pack" | "error";
+  message?: string; pack_qty?: number; pack_kind?: string; bin?: string; order_number?: string; sku?: string; product?: string; variant?: string;
   sorted?: number; packed?: number; required?: number; order_complete?: boolean;
 }
 

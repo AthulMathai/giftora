@@ -32,6 +32,7 @@ const TONE: Record<string, string> = {
   already_packed: "border-warn bg-warn/15",
   unknown_code: "border-warn bg-warn/15",
   not_ready: "border-warn bg-warn/15",
+  open_pack: "border-accent bg-accent/10",
   error: "border-bad bg-bad/10",
 };
 
@@ -141,6 +142,11 @@ export function Scanner({ mode, scan }: {
                 <p className="text-lg font-semibold">{last.order_number}</p>
                 <p>{last.product} — {last.variant}</p>
                 <p className="font-mono text-sm text-muted">{last.sku}</p>
+                {(last.pack_qty ?? 1) > 1 && (
+                  <p className="mt-1 inline-block rounded-full bg-ink px-3 py-0.5 text-sm text-white">
+                    Whole {last.pack_kind ?? "pack"} — {last.pack_qty} units, keep it sealed
+                  </p>
+                )}
                 <p className="mt-2 text-3xl font-bold">{last.sorted} of {last.required}</p>
                 {last.order_complete && <p className="mt-1 font-semibold text-ok">Order complete — ready to pack</p>}
               </div>
@@ -151,7 +157,7 @@ export function Scanner({ mode, scan }: {
                 <p className="text-lg font-semibold">{last.product} — {last.variant}</p>
                 <p className="font-mono text-sm text-muted">{last.sku}</p>
               </div>
-              <p className="text-4xl font-bold">{last.packed} of {last.required}</p>
+              <p className="text-4xl font-bold">{last.packed} of {last.required}{(last.pack_qty ?? 1) > 1 ? ` (+${last.pack_qty})` : ""}</p>
               {last.order_complete && <p className="w-full font-semibold text-ok">Everything verified. Order is packed — enter tracking below.</p>}
             </div>
           ) : (

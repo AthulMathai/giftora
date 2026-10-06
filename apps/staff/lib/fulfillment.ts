@@ -31,6 +31,20 @@ async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
 
 export const getVolume = (actor: string, from: string, to: string) =>
   rpc<VolumeRow[]>("svc_fulfillment_volume", { p_actor: actor, p_from: from, p_to: to });
+export interface PackBreakdown { outers: number; inners: number; singles: number; inner_qty: number | null; outer_qty: number | null; inner_barcode: string | null; outer_barcode: string | null }
+export const getPickPacks = (actor: string, sessionId: string) =>
+  rpc<Record<string, PackBreakdown>>("svc_pick_packs", { p_actor: actor, p_session_id: sessionId });
+
+/** "1 outer (12) + 1 inner (6) + 2 singles" */
+export function describePacks(b: PackBreakdown | undefined, required: number): string {
+  if (!b || (!b.inner_qty && !b.outer_qty)) return `${required} single${required === 1 ? "" : "s"}`;
+  const parts = [
+    b.outers ? `${b.outers} outer${b.outers > 1 ? "s" : ""} (${b.outer_qty})` : "",
+    b.inners ? `${b.inners} inner${b.inners > 1 ? "s" : ""} (${b.inner_qty})` : "",
+    b.singles ? `${b.singles} single${b.singles > 1 ? "s" : ""}` : "",
+  ].filter(Boolean);
+  return parts.join(" + ");
+}
 export const listSessions = (actor: string) => rpc<SessionRow[]>("svc_sessions", { p_actor: actor });
 export const getSession = (actor: string, id: string) => rpc<SessionDetail | null>("svc_session_get", { p_actor: actor, p_session_id: id });
 
