@@ -1,0 +1,40 @@
+# Supabase project configuration (used by the Supabase CLI and the GitHub integration).
+# Values not listed here use the CLI defaults.
+project_id = "giftora"
+
+[api]
+enabled = true
+port = 54321
+# Only `public` is exposed through the API. `internal` must never be added here.
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 17
+
+[db.seed]
+# Demo catalog for local development and preview branches only; never runs on production.
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3001"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+enable_signup = true
+minimum_password_length = 10
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+
+[auth.mfa]
+max_enrolled_factors = 10
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true

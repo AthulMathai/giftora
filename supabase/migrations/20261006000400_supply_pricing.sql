@@ -139,6 +139,7 @@ create or replace function internal.compute_price(
 ) returns bigint
 language plpgsql
 immutable
+set search_path = ''
 as $$
 declare
   v_base  bigint;

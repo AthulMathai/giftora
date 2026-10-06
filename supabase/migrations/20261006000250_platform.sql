@@ -21,6 +21,7 @@ create index audit_logs_actor_idx on internal.audit_logs (actor_id, occurred_at 
 create or replace function internal.audit_logs_immutable()
 returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   raise exception 'audit_logs is append-only';
@@ -37,6 +38,7 @@ create or replace function internal.current_actor()
 returns uuid
 language sql
 stable
+set search_path = ''
 as $$
   select coalesce(
     auth.uid(),

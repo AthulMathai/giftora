@@ -26,6 +26,7 @@ create trigger categories_updated_at before update on public.categories
 create or replace function internal.immutable_join(text[])
 returns text
 language sql immutable parallel safe
+set search_path = ''
 as $$ select array_to_string($1, ' ') $$;
 
 create table public.products (
@@ -148,6 +149,7 @@ create trigger product_variants_sku_barcode after insert on public.product_varia
 create or replace function public.is_customer_visible(s public.product_status)
 returns boolean
 language sql immutable
+set search_path = ''
 as $$ select s in ('active', 'out_of_stock', 'acquisition_unavailable', 'seasonal', 'archived') $$;
 grant execute on function public.is_customer_visible(public.product_status) to anon, authenticated;
 

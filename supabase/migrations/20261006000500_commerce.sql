@@ -219,6 +219,7 @@ create index order_events_order_idx on public.order_events (order_id, created_at
 create or replace function internal.order_items_freeze()
 returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   if tg_op = 'DELETE' then
@@ -240,6 +241,7 @@ create trigger order_items_freeze before update or delete on public.order_items
 create or replace function internal.snapshot_freeze()
 returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   raise exception 'order financial snapshots are immutable; add an order_adjustments row instead';
