@@ -17,8 +17,13 @@ export async function SiteHeader() {
         <Link href="/" className="font-display text-2xl tracking-tight">
           Gift<span className="text-coral">o</span>ra
         </Link>
-        <nav className="flex items-center gap-5 text-sm">
-          <Link href="/#shop" className="hover:text-coral">Shop</Link>
+        <nav className="flex items-center gap-4 sm:gap-5 text-sm">
+          <Link href="/shop" className="hover:text-coral">Shop</Link>
+          <Link href="/occasions" className="hidden sm:inline hover:text-coral">Occasions</Link>
+          <Link href="/seasons" className="hidden sm:inline hover:text-coral">Seasonal</Link>
+          <Link href="/shop" aria-label="Search gifts" className="hover:text-coral">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
+          </Link>
           {user ? (
             <Link href="/account" className="hover:text-coral">Account</Link>
           ) : (

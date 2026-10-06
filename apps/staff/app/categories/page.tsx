@@ -1,6 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { Button, Input, Notice, Panel } from "@/components/form";
+import { Button, Input, Notice, Panel, Textarea } from "@/components/form";
 import { requireStaff } from "@/lib/auth";
 import { friendly, listCategories, slugify } from "@/lib/catalog";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -18,6 +18,7 @@ async function saveCategory(formData: FormData) {
       id: formData.get("id") || null, name,
       slug: slugify(String(formData.get("slug") ?? "") || name),
       description: formData.get("description"),
+      ...(formData.has("seo_description") ? { seo_description: formData.get("seo_description") } : {}),
       sort_order: Number(formData.get("sort_order") || 0),
       is_visible: formData.get("is_visible") === "on",
     },
@@ -48,6 +49,10 @@ export default async function CategoriesPage({ searchParams }: { searchParams: P
               <Input label="Order" name="sort_order" defaultValue={c.sort_order} inputMode="numeric" />
               <label className="flex items-center gap-2 pb-2 text-sm"><input type="checkbox" name="is_visible" defaultChecked={c.is_visible} className="size-4 accent-ink" /> Visible</label>
               {canEdit && <Button variant="secondary">Save</Button>}
+              <Textarea label="Description (shown on the category page and used by Google)" name="description" defaultValue={c.description ?? ""}
+                        className="sm:col-span-5" placeholder="A sentence or two about what's in this category and who it suits." />
+              <Input label="Search result description (shown under the link on Google, up to 160 characters)" name="seo_description"
+                     defaultValue={c.seo_description ?? ""} maxLength={160} className="sm:col-span-5" />
             </fieldset>
           </form>
         ))}

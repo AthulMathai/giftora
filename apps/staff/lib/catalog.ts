@@ -38,7 +38,7 @@ export interface ProductDetail {
   variants: VariantDetail[];
 }
 
-export interface Category { id: string; slug: string; name: string; description: string | null; parent_id: string | null; sort_order: number; is_visible: boolean; products: number }
+export interface Category { id: string; slug: string; name: string; description: string | null; seo_title?: string | null; seo_description?: string | null; parent_id: string | null; sort_order: number; is_visible: boolean; products: number }
 
 async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
   const { data, error } = await createAdminClient().rpc(fn, args);

@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { JsonLd } from "@/components/json-ld";
+import { ProductCard } from "@/components/product-card";
 import { ProductGallery } from "@/components/product-gallery";
+import { TrackProductView } from "@/components/tracker";
 import { SetupNotice } from "@/components/setup-notice";
 import { Alert, SubmitButton } from "@/components/ui";
 import { addToCart } from "@/app/cart/actions";
 import { getUser } from "@/lib/auth";
-import { getAvailability, getProduct, prices } from "@/lib/catalog";
+import { getAvailability, getProduct, listProducts, prices } from "@/lib/catalog";
+import { OCCASIONS, RECIPIENTS } from "@/lib/discovery";
+import { breadcrumbLd, siteUrl as site } from "@/lib/seo";
 import { formatCad, priceRange } from "@/lib/format";
 import { supabaseConfigured } from "@/lib/supabase/server";
 
@@ -23,7 +28,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: product.seo_title ?? product.name,
     description,
     alternates: { canonical: `/products/${product.slug}` },
-    openGraph: { title: product.name, description },
+    openGraph: {
+      title: product.name, description, type: "website",
+      images: [...product.product_images].sort((a, b) => a.sort_order - b.sort_order).slice(0, 1)
+        .map((i) => ({ url: i.url, alt: i.alt_text })),
+    },
   };
 }
 
@@ -39,7 +48,19 @@ export default async function ProductPage({ params, searchParams }: Props) {
   const anyInStock = variants.some((v) => (availability.get(v.id) ?? 0) > 0);
   const firstAvailable = variants.find((v) => (availability.get(v.id) ?? 0) > 0);
   const user = await getUser();
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const siteUrl = site();
+  const all = await listProducts();
+  // Related: same category or a shared occasion, most overlap first.
+  const related = all.filter((p) => p.id !== product.id)
+    .map((p) => ({ p, score: (p.category?.slug === product.category?.slug ? 2 : 0)
+                             + p.occasions.filter((o) => product.occasions.includes(o)).length
+                             + p.recipients.filter((r) => product.recipients.includes(r)).length }))
+    .filter((x) => x.score > 0).sort((a, b) => b.score - a.score).slice(0, 4).map((x) => x.p);
+  const occasionLinks = OCCASIONS.filter((o) => product.occasions.includes(o.slug));
+  const recipientLinks = RECIPIENTS.filter((r) => product.recipients.includes(r.slug));
+  const crumbs = [{ name: "Home", path: "/" }, { name: "Shop", path: "/shop" },
+    ...(product.category ? [{ name: product.category.name, path: `/c/${product.category.slug}` }] : []),
+    { name: product.name, path: `/products/${product.slug}` }];
 
   // Product structured data for search engines and AI answer engines.
   const jsonLd = {
@@ -51,6 +72,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
     category: product.category?.name,
     image: product.product_images.map((i) => i.url),
     brand: { "@type": "Brand", name: "Giftora" },
+    url: `${siteUrl}/products/${product.slug}`,
     offers: variants.map((v) => ({
       "@type": "Offer",
       sku: v.sku,
@@ -60,15 +82,29 @@ export default async function ProductPage({ params, searchParams }: Props) {
       availability: purchasable && (availability.get(v.id) ?? 0) > 0
         ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
       url: `${siteUrl}/products/${product.slug}`,
+      itemCondition: "https://schema.org/NewCondition",
+      seller: { "@id": `${siteUrl}/#organization` },
+      shippingDetails: {
+        "@type": "OfferShippingDetails",
+        shippingDestination: { "@type": "DefinedRegion", addressCountry: "CA" },
+        shippingRate: { "@type": "MonetaryAmount", currency: "CAD", value: (v.price_cents ?? 0) >= 7500 ? "0.00" : "12.99" },
+        deliveryTime: {
+          "@type": "ShippingDeliveryTime",
+          handlingTime: { "@type": "QuantitativeValue", minValue: 1, maxValue: 3, unitCode: "DAY" },
+          transitTime: { "@type": "QuantitativeValue", minValue: 2, maxValue: 7, unitCode: "DAY" },
+        },
+      },
     })),
   };
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
+      <JsonLd data={[jsonLd, breadcrumbLd(crumbs)]} />
+      <TrackProductView productId={product.id} />
       <nav aria-label="Breadcrumb" className="text-sm text-muted">
         <Link href="/" className="hover:text-coral">Home</Link>
-        {product.category && <> / <span>{product.category.name}</span></>}
+        {" / "}<Link href="/shop" className="hover:text-coral">Shop</Link>
+        {product.category && <> / <Link href={`/c/${product.category.slug}`} className="hover:text-coral">{product.category.name}</Link></>}
       </nav>
 
       <div className="mt-6 grid gap-10 md:grid-cols-2">
@@ -121,8 +157,31 @@ export default async function ProductPage({ params, searchParams }: Props) {
           <div>
             <p className="mt-4 text-sm text-muted">Ships across Canada in 3–7 business days. Free standard shipping over $75.</p>
           </div>
+
+          {(occasionLinks.length > 0 || recipientLinks.length > 0) && (
+            <div className="mt-8 border-t border-line pt-6 text-sm">
+              <p className="text-muted">Great for</p>
+              <ul className="mt-2 flex flex-wrap gap-2">
+                {occasionLinks.map((o) => (
+                  <li key={o.slug}><Link href={`/occasions/${o.slug}`} className="rounded-full border border-line px-3 py-1 hover:border-ink">{o.name}</Link></li>
+                ))}
+                {recipientLinks.map((r) => (
+                  <li key={r.slug}><Link href={`/gifts-for/${r.slug}`} className="rounded-full border border-line px-3 py-1 hover:border-ink">{r.name}</Link></li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
+
+      {related.length > 0 && (
+        <section className="mt-20" aria-labelledby="related-heading">
+          <h2 id="related-heading" className="font-display text-3xl">You might also like</h2>
+          <div className="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-10">
+            {related.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

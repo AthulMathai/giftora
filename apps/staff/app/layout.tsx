@@ -18,6 +18,9 @@ const NAV = [
   { href: "/stock", label: "Stock check" },
   { href: "/pricing", label: "Pricing" },
   { href: "/categories", label: "Categories" },
+  { href: "/campaigns", label: "Campaigns" },
+  { href: "/analytics", label: "Analytics" },
+  { href: "/seo", label: "SEO" },
   { href: "/settings", label: "Settings" },
 ];
 
@@ -29,7 +32,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
           <div className="mx-auto max-w-7xl px-4 h-14 flex items-center gap-8">
             <Link href="/" className="font-semibold tracking-tight">Giftora <span className="text-white/60 font-normal">Staff</span></Link>
             <nav className="flex gap-5 overflow-x-auto text-sm">
-              {NAV.map((n) => <Link key={n.href} href={n.href} className="text-white/80 hover:text-white">{n.label}</Link>)}
+              {NAV.map((n) => <Link key={n.href} href={n.href} className="shrink-0 text-white/80 hover:text-white">{n.label}</Link>)}
             </nav>
           </div>
         </header>

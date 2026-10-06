@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { safeNext } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { trackServer } from "@/lib/track";
 
 async function ensureCart() {
   const supabase = await createClient();
@@ -33,6 +34,9 @@ export async function addToCart(formData: FormData) {
     : await supabase.from("cart_items").insert({ cart_id: cartId, variant_id: variantId, quantity: next });
   if (error) redirect(`${back}${back.includes("?") ? "&" : "?"}error=unavailable`);
 
+  const { data: variant } = await supabase.from("product_variants").select("product_id, price_cents").eq("id", variantId).maybeSingle();
+  await trackServer("add_to_cart", { product_id: variant?.product_id, variant_id: variantId,
+                                    value_cents: variant?.price_cents ? variant.price_cents * quantity : null });
   revalidatePath("/", "layout");
   redirect("/cart?added=1");
 }

@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { trackServer } from "@/lib/track";
 
 // Postgres error codes raised by public.start_checkout().
 const REASONS: Record<string, string> = {
@@ -30,7 +31,8 @@ export async function startCheckout(formData: FormData) {
     const detail = reason === "stock" || reason === "unavailable" ? `&sku=${encodeURIComponent(error.message.split(" ").pop() ?? "")}` : "";
     redirect(`/checkout?error=${reason}${detail}`);
   }
-  const row = (data as { order_id: string }[])[0];
+  const row = (data as { order_id: string; total_cents: number }[])[0];
   if (!row) redirect("/checkout?error=failed");
+  await trackServer("begin_checkout", { order_id: row.order_id, user_id: user.id, value_cents: row.total_cents });
   redirect(`/checkout/pay?order=${row.order_id}`);
 }

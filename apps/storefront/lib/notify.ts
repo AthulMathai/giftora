@@ -10,7 +10,7 @@ import { createAdminClient } from "./supabase/admin";
 type Recipient = { to: string; finance: boolean };
 interface AlertItem { sku: string; product: string; variant: string; quantity: number; unit_price_cents: number; unit_cost_cents?: number; expected_profit_cents?: number }
 interface Alert {
-  order_number: string; customer: string; email: string; shipping_method: string; ship_to: string;
+  order_number: string; customer: string; email: string | null; shipping_method: string; ship_to: string;
   payment_status: string; total_cents: number; ship_by: string; items: AlertItem[];
   expected_profit_cents?: number; action_required: string;
 }
@@ -30,7 +30,8 @@ function recipients(value: unknown): Recipient[] {
   });
 }
 
-async function sendEmail(to: string, subject: string, html: string, text: string) {
+async function sendEmail(to: string | null | undefined, subject: string, html: string, text: string) {
+  if (!to) return; // staff-created orders may have no customer email
   const key = process.env.RESEND_API_KEY;
   if (!key) { console.warn(`[notify] RESEND_API_KEY not set; skipped email "${subject}" to ${to}`); return; }
   const res = await fetch("https://api.resend.com/emails", {
