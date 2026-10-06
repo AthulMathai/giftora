@@ -27,7 +27,11 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
           <p className="mt-1 text-sm text-muted">{all.length} products · {all.filter((p) => p.status === "active").length} on sale</p>
         </div>
         {staff.can("catalog.edit") && (
-          <Link href="/products/new" className="inline-flex h-10 items-center rounded-lg bg-ink px-4 text-sm text-white">New product</Link>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/products/import" className="inline-flex h-10 items-center rounded-lg border border-line bg-white px-4 text-sm hover:border-ink">Import spreadsheet</Link>
+            <Link href="/products/photos" className="inline-flex h-10 items-center rounded-lg border border-line bg-white px-4 text-sm hover:border-ink">Upload photos</Link>
+            <Link href="/products/new" className="inline-flex h-10 items-center rounded-lg bg-ink px-4 text-sm text-white">New product</Link>
+          </div>
         )}
       </div>
 
