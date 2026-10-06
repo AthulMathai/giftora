@@ -1,9 +1,12 @@
 name: Refresh lockfile
 
-# Regenerates pnpm-lock.yaml and commits it when dependencies change on main,
-# so Vercel and CI install exactly the same versions.
+# Regenerates pnpm-lock.yaml and commits it whenever dependencies change, so Vercel (which
+# installs strictly from the lockfile) and CI always install the same versions.
+# On pull requests it commits to the PR branch, so the lockfile is right BEFORE merging.
 on:
   workflow_dispatch:
+  pull_request:
+    paths: ["**/package.json", "pnpm-workspace.yaml"]
   push:
     branches: [main]
     paths: ["**/package.json", "pnpm-workspace.yaml"]
@@ -13,9 +16,13 @@ permissions:
 
 jobs:
   lockfile:
+    # Only for branches in this repository (forks can't be pushed to).
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
