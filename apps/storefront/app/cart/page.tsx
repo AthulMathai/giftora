@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Alert, PageTitle } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
@@ -29,8 +30,8 @@ export default async function CartPage({ searchParams }: { searchParams: Promise
           <ul className="divide-y divide-line border-y border-line">
             {lines.map((l) => (
               <li key={l.variant_id} className="flex gap-4 py-5">
-                <div className="size-20 shrink-0 rounded-xl bg-linear-to-br from-[#f3d9c9] to-[#e9b9a4] grid place-items-center font-display text-3xl text-ink/25">
-                  {l.product.name.charAt(0)}
+                <div className="relative size-20 shrink-0 overflow-hidden rounded-xl bg-linear-to-br from-[#f3d9c9] to-[#e9b9a4] grid place-items-center font-display text-3xl text-ink/25">
+                  {l.image_url ? <Image src={l.image_url} alt="" fill sizes="80px" className="object-cover" /> : l.product.name.charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <Link href={`/products/${l.product.slug}`} className="font-medium hover:text-coral">{l.product.name}</Link>

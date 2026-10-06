@@ -1,4 +1,4 @@
--- Service API tests. Runs after core_rules_test.sql on the same database
+-- Service API tests. Runs after 01_core_rules_test.sql on the same database
 -- (alice's order GFT-1001 is paid; Olivia is an order manager without finance access).
 \set ON_ERROR_STOP 1
 \set QUIET 1

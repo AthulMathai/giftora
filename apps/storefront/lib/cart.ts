@@ -8,6 +8,7 @@ export interface CartLine {
   label: string;
   price_cents: number | null;
   product: { slug: string; name: string; status: string };
+  image_url: string | null;
   purchasable_qty: number;
 }
 
@@ -19,7 +20,7 @@ export async function getCart(): Promise<{ cartId: string | null; lines: CartLin
 
   const { data, error } = await supabase
     .from("cart_items")
-    .select("variant_id, quantity, added_at, product_variants ( sku, label, price_cents, products ( slug, name, status ) )")
+    .select("variant_id, quantity, added_at, product_variants ( sku, label, price_cents, products ( slug, name, status, product_images ( url, sort_order ) ) )")
     .eq("cart_id", cart.id)
     .order("added_at");
   if (error) throw error;
@@ -27,7 +28,7 @@ export async function getCart(): Promise<{ cartId: string | null; lines: CartLin
   type Row = {
     variant_id: string; quantity: number;
     product_variants: { sku: string; label: string; price_cents: number | null;
-      products: { slug: string; name: string; status: string } } | null;
+      products: { slug: string; name: string; status: string; product_images: { url: string; sort_order: number }[] } } | null;
   };
   const rows = (data ?? []) as unknown as Row[];
   const ids = rows.map((r) => r.variant_id);
@@ -45,7 +46,8 @@ export async function getCart(): Promise<{ cartId: string | null; lines: CartLin
       sku: r.product_variants!.sku,
       label: r.product_variants!.label,
       price_cents: r.product_variants!.price_cents,
-      product: r.product_variants!.products,
+      product: { slug: r.product_variants!.products.slug, name: r.product_variants!.products.name, status: r.product_variants!.products.status },
+      image_url: [...(r.product_variants!.products.product_images ?? [])].sort((a, b) => a.sort_order - b.sort_order)[0]?.url ?? null,
       purchasable_qty: avail.get(r.variant_id) ?? 0,
     }));
   const subtotalCents = lines.reduce((s, l) => s + (l.price_cents ?? 0) * l.quantity, 0);

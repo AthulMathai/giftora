@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ProductGallery } from "@/components/product-gallery";
 import { SetupNotice } from "@/components/setup-notice";
 import { Alert, SubmitButton } from "@/components/ui";
 import { addToCart } from "@/app/cart/actions";
@@ -71,9 +72,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
       </nav>
 
       <div className="mt-6 grid gap-10 md:grid-cols-2">
-        <div className="aspect-square rounded-3xl bg-linear-to-br from-[#f3d9c9] to-[#e9b9a4] grid place-items-center">
-          <span aria-hidden className="font-display text-9xl text-ink/20">{product.name.charAt(0)}</span>
-        </div>
+        <ProductGallery images={[...product.product_images].sort((a, b) => a.sort_order - b.sort_order)} name={product.name} />
 
         <div>
           <h1 className="font-display text-4xl sm:text-5xl tracking-tight">{product.name}</h1>
