@@ -1,9 +1,16 @@
 import type { MetadataRoute } from "next";
+import { siteUrl } from "@/lib/seo";
+
+const PRIVATE = ["/account", "/cart", "/checkout", "/api/", "/sign-in", "/sign-up", "/auth/"];
 
 export default function robots(): MetadataRoute.Robots {
-  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   return {
-    rules: [{ userAgent: "*", allow: "/", disallow: ["/account", "/cart", "/checkout", "/api"] }],
-    sitemap: `${site}/sitemap.xml`,
+    rules: [
+      { userAgent: "*", allow: "/", disallow: PRIVATE },
+      // Welcome AI search and answer engines (GEO): they can read and cite public pages.
+      { userAgent: ["GPTBot", "OAI-SearchBot", "ChatGPT-User", "ClaudeBot", "Claude-SearchBot", "PerplexityBot", "Google-Extended", "Applebot-Extended", "Bingbot"], allow: "/", disallow: PRIVATE },
+    ],
+    sitemap: siteUrl("/sitemap.xml"),
+    host: siteUrl(),
   };
 }

@@ -1,6 +1,7 @@
 import { saveProduct } from "@/app/products/actions";
 import { PRODUCT_STATUSES, STATUS_HELP, type Category, type ProductDetail } from "@/lib/catalog";
 import { Button, Input, Select, Textarea } from "./form";
+import { SeoFields } from "./seo-fields";
 
 export function ProductForm({ product, categories, canEdit }: { product?: ProductDetail; categories: Category[]; canEdit: boolean }) {
   const join = (a?: string[]) => (a ?? []).join(", ");
@@ -25,10 +26,7 @@ export function ProductForm({ product, categories, canEdit }: { product?: Produc
         <Input label="Occasions" name="occasions" defaultValue={join(product?.occasions)} placeholder="birthday, christmas" />
         <Input label="Good for" name="recipients" defaultValue={join(product?.recipients)} placeholder="her, dad, coffee-lover" />
         <div />
-        <Input label="Search title (SEO)" name="seo_title" defaultValue={product?.seo_title ?? ""} maxLength={70}
-               hint="Shown in Google results. Defaults to the product name." />
-        <Input label="Search description (SEO)" name="seo_description" defaultValue={product?.seo_description ?? ""} maxLength={160}
-               hint="About 150 characters. Defaults to the description." />
+        <SeoFields initialTitle={product?.seo_title ?? ""} initialDescription={product?.seo_description ?? ""} canSuggest={canEdit} />
         {canEdit && (
           <div className="md:col-span-2">
             <Button>{product ? "Save product" : "Create product"}</Button>

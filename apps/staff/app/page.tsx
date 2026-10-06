@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getStaffState } from "@/lib/auth";
-import { staffOrders } from "@/lib/orders";
+import { torontoDate } from "@/lib/fulfillment";
+import { cad, staffOrders } from "@/lib/orders";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { supabaseConfigured } from "@/lib/supabase/server";
 
@@ -45,6 +46,14 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     const { data } = await createAdminClient().rpc("svc_stock_list", { p_actor: staff.userId });
     staleCount = ((data ?? []) as { stale: boolean }[]).filter((r) => r.stale).length;
   }
+  // Today at a glance (Toronto day). Never let analytics trouble break the dashboard.
+  let today: { orders: number; sales: number; visitors: number } | null = null;
+  if (staff.can("analytics.view")) {
+    const day = torontoDate();
+    const { data } = await createAdminClient().rpc("svc_analytics", { p_actor: staff.userId, p_from: day, p_to: day });
+    const t = (data as { totals?: { orders: number; gross_sales_cents: number; visitors: number } } | null)?.totals;
+    if (t) today = { orders: t.orders, sales: t.gross_sales_cents, visitors: t.visitors };
+  }
   const tiles = [
     { label: "New — to acquire", value: count(["paid"]), href: "/orders?status=paid" },
     { label: "Being prepared", value: count(["processing", "ready_to_ship", "packed"]), href: "/orders?status=processing" },
@@ -66,6 +75,15 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       )}
       <h1 className="text-2xl font-semibold">Dashboard</h1>
       <p className="mt-1 text-sm text-muted">Signed in as {staff.email} · {staff.role.replace(/_/g, " ")}</p>
+      {today && (
+        <Link href="/analytics?range=today" className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-1 rounded-xl border border-line bg-panel px-5 py-3 text-sm hover:border-ink">
+          <span className="font-medium">Today</span>
+          <span><strong>{cad(today.sales)}</strong> <span className="text-muted">in sales</span></span>
+          <span><strong>{today.orders}</strong> <span className="text-muted">order{today.orders === 1 ? "" : "s"}</span></span>
+          <span><strong>{today.visitors}</strong> <span className="text-muted">visitor{today.visitors === 1 ? "" : "s"}</span></span>
+          <span className="ml-auto text-muted">Analytics →</span>
+        </Link>
+      )}
       <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {tiles.map((t) => (
           <Link key={t.label} href={t.href} className="rounded-xl border border-line bg-panel p-5 hover:border-ink">

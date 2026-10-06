@@ -6,7 +6,8 @@ export interface StaffOrderItem {
   status: string; unit_cost_cents?: number;
 }
 export interface StaffOrder {
-  id: string; order_number: string; status: string; payment_status: string; email: string; customer: string;
+  id: string; order_number: string; status: string; payment_status: string; email: string | null; customer: string;
+  source: string; payment_method: string | null; shipping_method: string;
   shipping_address: Record<string, string | null>; shipping_method_name: string; total_cents: number;
   ship_by: string | null; placed_at: string; paid_at: string | null; shipped_at: string | null;
   carrier: string | null; tracking_number: string | null; staff_note: string | null;

@@ -224,6 +224,60 @@ begin
 end;
 $$;
 
+
+-- Categories can now carry their own SEO title and meta description.
+create or replace function public.svc_category_save(p_actor uuid, p jsonb)
+returns uuid
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare v uuid := nullif(p ->> 'id', '')::uuid;
+begin
+  perform internal.act_as(p_actor, 'catalog.edit');
+  if v is null then
+    insert into public.categories (slug, name, description, parent_id, sort_order, is_visible)
+    values (lower(btrim(p ->> 'slug')), btrim(p ->> 'name'), nullif(btrim(p ->> 'description'), ''),
+            nullif(p ->> 'parent_id', '')::uuid, coalesce((p ->> 'sort_order')::int, 0),
+            coalesce((p ->> 'is_visible')::boolean, true))
+    returning id into v;
+  else
+    update public.categories set slug = lower(btrim(p ->> 'slug')), name = btrim(p ->> 'name'),
+           description = nullif(btrim(p ->> 'description'), ''), parent_id = nullif(p ->> 'parent_id', '')::uuid,
+           sort_order = coalesce((p ->> 'sort_order')::int, sort_order),
+           is_visible = coalesce((p ->> 'is_visible')::boolean, is_visible)
+     where id = v;
+  end if;
+  if p ? 'seo_title' or p ? 'seo_description' then
+    update public.categories
+       set seo_title = case when p ? 'seo_title' then nullif(btrim(p ->> 'seo_title'), '') else seo_title end,
+           seo_description = case when p ? 'seo_description' then nullif(btrim(p ->> 'seo_description'), '') else seo_description end
+     where id = v;
+  end if;
+  perform internal.write_audit('category.save', 'public.categories', v::text, null, p);
+  return v;
+end;
+$$;
+
+
+create or replace function public.svc_categories(p_actor uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform internal.act_as(p_actor, 'catalog.view');
+  return coalesce((
+    select jsonb_agg(jsonb_build_object('id', c.id, 'slug', c.slug, 'name', c.name, 'description', c.description,
+                                        'seo_title', c.seo_title, 'seo_description', c.seo_description,
+                                        'parent_id', c.parent_id, 'sort_order', c.sort_order, 'is_visible', c.is_visible,
+                                        'products', (select count(*) from public.products p where p.category_id = c.id))
+                     order by c.sort_order, c.name)
+    from public.categories c), '[]'::jsonb);
+end;
+$$;
+
 do $$
 declare
   f record;
