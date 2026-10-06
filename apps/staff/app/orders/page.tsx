@@ -58,6 +58,11 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                   <div className="flex items-baseline gap-3">
                     <h2 className="text-lg font-semibold">{o.order_number}</h2>
                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${BADGE[o.status] ?? "bg-line"}`}>{o.status}</span>
+                    {o.batch && (
+                      <Link href={`/fulfillment/${o.batch_id}`} className="rounded-full border border-ink px-2.5 py-0.5 font-mono text-xs hover:bg-ink hover:text-white">
+                        {o.batch}{o.bin ? ` · ${o.bin}` : ""}
+                      </Link>
+                    )}
                     {o.payment_status !== "captured" && <span className="rounded-full bg-line px-2.5 py-0.5 text-xs">{o.payment_status.replace(/_/g, " ")}</span>}
                     {o.ship_by && o.status === "paid" && <span className="text-xs text-muted">ship by {o.ship_by}</span>}
                   </div>
@@ -112,8 +117,8 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                           <option>Canada Post</option><option>Purolator</option><option>UPS</option><option>FedEx</option>
                         </select>
                       </label>
-                      <label className="text-xs text-muted">Tracking number
-                        <input name="tracking_number" required className="mt-1 block h-9 w-56 rounded-lg border border-line px-2 font-mono text-sm text-ink" />
+                      <label className="text-xs text-muted">Tracking number (optional)
+                        <input name="tracking_number" className="mt-1 block h-9 w-56 rounded-lg border border-line px-2 font-mono text-sm text-ink" />
                       </label>
                       <button className="h-9 rounded-lg bg-ink px-4 text-sm text-white">Mark shipped</button>
                     </form>

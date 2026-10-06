@@ -29,6 +29,7 @@ export default async function OrderPage({ params }: { params: Promise<{ number: 
           <div className="rounded-2xl border border-line bg-paper p-6">
             <p className="text-sm text-muted">Status</p>
             <p className="mt-1 font-display text-2xl">{STATUS_LABEL[o.status] ?? o.status}</p>
+            <OrderProgress status={o.status} />
             {o.tracking_number && (
               <p className="mt-3 text-sm">
                 {o.carrier} tracking:{" "}
@@ -84,5 +85,33 @@ export default async function OrderPage({ params }: { params: Promise<{ number: 
         </aside>
       </div>
     </div>
+  );
+}
+
+const STEPS = [
+  { label: "Order received", statuses: ["paid"] },
+  { label: "Being prepared", statuses: ["processing", "ready_to_ship"] },
+  { label: "Packed", statuses: ["packed"] },
+  { label: "Shipped", statuses: ["shipped"] },
+  { label: "Delivered", statuses: ["delivered", "closed"] },
+];
+
+function OrderProgress({ status }: { status: string }) {
+  if (status === "cancelled" || status === "pending_payment") return null;
+  const current = STEPS.findIndex((s) => s.statuses.includes(status));
+  return (
+    <ol className="mt-5 grid grid-cols-5 gap-1" aria-label="Order progress">
+      {STEPS.map((step, i) => {
+        const reached = i <= current;
+        return (
+          <li key={step.label} className="text-center" aria-current={i === current ? "step" : undefined}>
+            <div className={`h-1.5 rounded-full ${reached ? "bg-coral" : "bg-line"}`} />
+            <p className={`mt-2 text-[11px] leading-tight sm:text-xs ${i === current ? "font-semibold text-ink" : reached ? "text-ink" : "text-muted"}`}>
+              {step.label}
+            </p>
+          </li>
+        );
+      })}
+    </ol>
   );
 }

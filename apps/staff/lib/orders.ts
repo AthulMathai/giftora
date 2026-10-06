@@ -11,6 +11,7 @@ export interface StaffOrder {
   ship_by: string | null; placed_at: string; paid_at: string | null; shipped_at: string | null;
   carrier: string | null; tracking_number: string | null; staff_note: string | null;
   items: StaffOrderItem[]; profit_cents?: number | null;
+  batch?: string | null; batch_id?: string | null; bin?: string | null;
 }
 
 /** Orders visible to this staff member. Cost/profit appear only if their role has finance.view. */

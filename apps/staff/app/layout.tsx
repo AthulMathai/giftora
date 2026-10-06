@@ -13,12 +13,12 @@ export const metadata: Metadata = {
 const NAV = [
   { href: "/", label: "Dashboard" },
   { href: "/orders", label: "Orders" },
-  { href: "/fulfillment", label: "Fulfillment" },
-  { href: "/exceptions", label: "Exceptions" },
+  { href: "/fulfillment", label: "Batches" },
   { href: "/products", label: "Products" },
   { href: "/stock", label: "Stock check" },
   { href: "/pricing", label: "Pricing" },
   { href: "/categories", label: "Categories" },
+  { href: "/settings", label: "Settings" },
 ];
 
 export default function StaffLayout({ children }: { children: React.ReactNode }) {
