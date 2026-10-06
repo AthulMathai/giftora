@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getStaffState } from "@/lib/auth";
 import { staffOrders } from "@/lib/orders";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { supabaseConfigured } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -34,6 +35,11 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const staff = state.staff;
   const orders = staff.can("orders.view") ? await staffOrders(staff.userId) : [];
   const count = (s: string[]) => orders.filter((o) => s.includes(o.status)).length;
+  let staleCount = 0;
+  if (staff.can("suppliers.view")) {
+    const { data } = await createAdminClient().rpc("svc_stock_list", { p_actor: staff.userId });
+    staleCount = ((data ?? []) as { stale: boolean }[]).filter((r) => r.stale).length;
+  }
   const tiles = [
     { label: "New — to acquire", value: count(["paid"]), href: "/orders?status=paid" },
     { label: "Being prepared", value: count(["processing"]), href: "/orders?status=processing" },
@@ -47,6 +53,11 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         <p className="mb-6 rounded-lg border border-warn/40 bg-warn/10 px-4 py-3 text-sm">
           Your role doesn&apos;t include <code>{denied}</code>.
         </p>
+      )}
+      {staleCount > 0 && (
+        <Link href="/stock?show=stale" className="mb-6 block rounded-lg border border-warn/40 bg-warn/10 px-4 py-3 text-sm">
+          <strong>{staleCount} item{staleCount === 1 ? "" : "s"}</strong> haven&apos;t had a stock check in 72 hours and are hidden from sale. Check them →
+        </Link>
       )}
       <h1 className="text-2xl font-semibold">Dashboard</h1>
       <p className="mt-1 text-sm text-muted">Signed in as {staff.email} · {staff.role.replace(/_/g, " ")}</p>
