@@ -157,13 +157,13 @@ function scene(theme: SeasonTheme, { accent, ink, bg }: Colors): ReactNode {
       return (
         <>
           <path d="M0 330 Q150 290 300 320 T600 300 V400 H0Z" fill="#fff" opacity={0.85} />
-          {Array.from({ length: 14 }, (_, i) => <Snowflake key={i} x={r() * 600} y={r() * 260} s={0.4 + r() * 0.7} c={theme === "winter" ? accent : "#ffffff"} o={0.5 + r() * 0.5} />)}
+          {Array.from({ length: 14 }, (_, i) => <Snowflake key={i} x={r() * 600} y={r() * 260} s={0.4 + r() * 0.7} c={theme === "winter" ? accent : "#b9c8d3"} o={0.5 + r() * 0.5} />)}
           {theme === "christmas" ? <>
             <Tree x={430} y={210} s={1.5} c="#2f6b46" trunk="#6b4a2f" />
             <Tree x={530} y={250} s={1.0} c="#3f8a5a" trunk="#6b4a2f" />
             <Tree x={340} y={262} s={0.8} c="#2f6b46" trunk="#6b4a2f" />
-            <Ornament x={120} y={110} s={1.3} c={accent} cap="#d9b25b" />
-            <Ornament x={200} y={90} s={0.9} c="#2f6b46" cap="#d9b25b" />
+            <Ornament x={250} y={170} s={1.3} c={accent} cap="#d9b25b" />
+            <Ornament x={320} y={140} s={0.9} c="#2f6b46" cap="#d9b25b" />
             <Gift x={190} y={300} s={1.1} c={accent} ribbon="#f3c34b" r={-6} />
             <Gift x={270} y={320} s={0.8} c="#2f6b46" ribbon="#fff" r={5} />
           </> : <>
@@ -177,7 +177,7 @@ function scene(theme: SeasonTheme, { accent, ink, bg }: Colors): ReactNode {
           <circle cx={460} cy={110} r={78} fill="#f6d27a" />
           <circle cx={490} cy={95} r={78} fill={bg} opacity={0.15} />
           {Array.from({ length: 5 }, (_, i) => (
-            <polygon key={i} points={BAT} fill={ink} transform={at(140 + r() * 380, 40 + r() * 150, 0.6 + r() * 0.6, -15 + r() * 30)} opacity={0.85} />
+            <path key={i} d={BAT} fill={ink} transform={at(140 + r() * 380, 40 + r() * 150, 0.6 + r() * 0.6, -15 + r() * 30)} opacity={0.85} />
           ))}
           {Array.from({ length: 16 }, (_, i) => <circle key={`s${i}`} cx={r() * 600} cy={r() * 220} r={1.5 + r() * 1.5} fill={ink} opacity={0.35} />)}
           <path d="M0 350 Q300 310 600 345 V400 H0Z" fill={ink} opacity={0.12} />
@@ -291,7 +291,7 @@ export function SeasonMotif({ theme, color }: { theme: SeasonTheme; color: strin
   const icon = (() => {
     switch (theme) {
       case "christmas": case "winter": return <Snowflake x={10} y={10} s={0.3} c={color} />;
-      case "halloween": return <polygon points={BAT} transform={at(0, 4, 0.28)} fill={color} />;
+      case "halloween": return <path d={BAT} transform={at(0, 4, 0.28)} fill={color} />;
       case "valentines": case "mothers_day": return <path d={HEART} transform={at(3, 2, 0.15)} fill={color} />;
       case "autumn": case "back_to_school": return <polygon points={MAPLE} transform={at(2, 1, 0.17)} fill={color} />;
       default: return <circle cx={10} cy={10} r={3} fill={color} />;
